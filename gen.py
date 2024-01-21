@@ -10,6 +10,9 @@ import ai
 width = 30
 height = 20
 
+seed = random.randint(0, 2**32-1)
+print(f"seed={seed}")
+random.seed(seed)
 
 def get_words(num=5):
     if not hasattr(get_words, "words"):
@@ -46,7 +49,7 @@ def get_colors(words, num_colors=3):
 
 
 def get_base_color(colors, offset=20):
-    is_light = sum(sum(color) for color in colors) / (len(colors) * 3) > 120
+    is_light = colors_are_light(colors)
 
     # sometimes, just pick one of the colours, the most contrasty one
     if random.random() < 0.2:
@@ -58,12 +61,23 @@ def get_base_color(colors, offset=20):
 
 
 def draw_bg(d: draw.Drawing, colors):
+    is_light = colors_are_light(colors)
+
     filter = draw.Filter()
-    filter.append(draw.FilterItem("feTurbulence", type="fractalNoise", baseFrequency='0.6', numOctaves="5", result='noise'))
-    diffuse = draw.FilterItem("feDiffuseLighting", in_='noise', lighting_color='white', surfaceScale='2')
+
+    freq = random_range(0.5, 0.7)
+    octaves = random.randint(5, 7)
+    filter.append(draw.FilterItem("feTurbulence", type="fractalNoise", baseFrequency=str(freq), numOctaves=str(octaves), result='noise'))
+    
+    scale = random_range(2, 10)
+    diffuse_color = random.choice(colors) if random.random() < .5 else (220, 220, 220)
+    diffuse = draw.FilterItem("feDiffuseLighting", in_='noise', lighting_color=rgb_to_hex(diffuse_color), surfaceScale=str(scale))
     diffuse.append(draw.FilterItem("feDistantLight", azimuth="45", elevation="60"))
     filter.append(diffuse)
 
+    if not is_light:
+        filter.append(draw.FilterItem("feColorMatrix", type="matrix", values="-1 0 0 0 1 0 -1 0 0 1 0 0 -1 0 1 0 0 0 1 0"))
+    
     bgbg = draw.Rectangle(0, 0, "100%", "100%", fill="none", filter=filter)
     d.append(bgbg)
 
@@ -76,8 +90,8 @@ def draw_bg(d: draw.Drawing, colors):
             stop = clamp01(random_range(stop_base - stop_jitter, stop_base + stop_jitter))
         else:
             stop = stop_base
-
-        gradient.add_stop(stop, rgb_to_hex(color) + "99")
+        alpha = random.randint(80, 200)
+        gradient.add_stop(stop, rgb_to_hex(color) + "%02x" % alpha)
 
     bg = draw.Rectangle(0, 0, "100%", "100%", fill=gradient)
     d.append(bg)
@@ -110,6 +124,9 @@ def draw_line(d: draw.Drawing, base, blurred=False):
 def draw_something(colors, base):
     d = draw.Drawing(width, height)
 
+    global seed
+    d.append_title(str(seed))
+
     draw_bg(d, colors)
     draw_line(d, base)
     draw_line(d, base, True)
@@ -122,9 +139,6 @@ def draw_something(colors, base):
 
 
 def generate():
-    seed = random.randint(0, 2**32-1)
-    print(f"seed={seed}")
-    random.seed(seed)
 
     words = get_words(5)
     print(words)
@@ -139,8 +153,7 @@ def generate():
 
 def main():
     load_dotenv()
-    for _ in range(5):
-        generate()
+    generate()
 
 
 if __name__ == "__main__":

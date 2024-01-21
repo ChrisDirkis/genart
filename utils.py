@@ -21,3 +21,7 @@ def clamp01(x):
 
 def lerp(a, b, t):
     return a + (b - a) * t
+
+
+def colors_are_light(colors, threshold=120):
+    return sum(sum(color) for color in colors) / (len(colors) * 3) > threshold
